@@ -64,9 +64,29 @@ dlib_save<-dlib %>%
   select(urlDrugName, condition, benefitsReview, rating) %>%
   mutate(review = str_remove_all(benefitsReview, pattern = '[\r]')) %>%
   mutate(review = str_remove_all(benefitsReview, pattern = '[\n]')) %>%
-  mutate(review = str_remove_all(benefitsReview, pattern = '[\"]')) 
+  mutate(review = str_remove_all(benefitsReview, pattern = '[\"]')) %>%
+  rename(drug =urlDrugName ) %>%
+  select (-benefitsReview) %>%
+  select(drug, condition, review, rating)
 dlib_save %>%
   count(rating)
+save(dlib_save, file="dlib.r")
+load(file="dcom.r")
 
+#############
+#combine
+drev<-rbind(dcom_save, dlib_save)
+drev
+drev<-rbind(drev, dcom1_save)
+save(drev, file="reviews_combined.r")
+
+rm(dlib, dlib_save, dcom, dcom_save, data)
+rm(dcom1, dcom1_save)
+rm(dcom1_save)
 #########
+use<-read_csv(file="Drug_Utilization_2017_-_National_Total.csv")
+use %>%
+  select(`Product Name`)
+
+use
 
