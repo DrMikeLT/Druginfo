@@ -85,8 +85,25 @@ rm(dcom1, dcom1_save)
 rm(dcom1_save)
 #########
 use<-read_csv(file="Drug_Utilization_2017_-_National_Total.csv")
-use %>%
-  select(`Product Name`)
+smalluse<-use %>%
+  select(`Product Name`, `Number of Prescriptions`,`Total Amount Reimbursed`) %>%
+  na.omit() %>%
+  mutate(drug = str_to_lower(`Product Name`)) %>%
+  select(-`Product Name`) %>%
+  group_by(drug)%>%
+  summarise(cost=sum(`Total Amount Reimbursed`), numscrip=sum(`Number of Prescriptions`))
 
 use
+
+######
+#Looking at comments
+library(stringr)
+library(tidyverse)
+drev %>%
+  mutate(lovec=str_count( review, "love"),
+         hate=str_count( review, "hate"),
+         wonderfulc = str_count( review, "wonderful"),
+         savec=str_count( review, "sav"),) 
+  
+
 
