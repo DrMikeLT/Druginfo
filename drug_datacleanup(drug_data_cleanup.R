@@ -152,6 +152,8 @@ pain_rev<- revcount %>%
   filter(condition =="Pain")
 save(pain_rev, file="just_pain_reviews.r")
 
+
+
 ########
 #Drug Names
 nam<-read_tsv(file="drug_names.tsv")
@@ -197,8 +199,8 @@ threshold<-14 # max 14 characters of divergence
 mindist<-integer()
 sortedmatches<-character()
 
-for (i in 1:length(pain_rev$drug) ) {
-  matchdist<-adist(pain_rev$drug[i],cost$drug)[1,]
+for (i in 1:length(revcount$drug) ) {
+  matchdist<-adist(revcount$drug[i],cost$drug)[1,]
   # matchdist<-stringdist(revcount$drug[i],cost$drug) # several methods available
   
   matchdist<-ifelse(matchdist>threshold,NA,matchdist)
@@ -207,5 +209,61 @@ for (i in 1:length(pain_rev$drug) ) {
   match[i]<-ifelse(length(cost$drug[which.min(matchdist)])==0,NA,
                    cost$drug[which.min(matchdist)] )
 }
-res<-data.frame(pain_rev$drug=pain_rev$drug,match=match,divergence=mindist, sortedmatches=sortedmatches, stringsAsFactors = F)
-res
+res_big<-data.frame(revdrug=revcount$drug,costmatch=match,divergence=mindist,  stringsAsFactors = F) #sortedmatches=sortedmatches,
+save(res_big, file="full_match_file.r")
+res_big_clean<-res_big[res_big$divergence<2,]
+res_big_clean<-res_big_clean[is.na(res_big_clean$divergence)==F,]
+res_big_clean<-res_big_clean[,-3]
+res_big_clean<-as_tibble(res_big_clean)
+
+save(res_big_clean, file="cleaned_match_file.r")
+matchfile<-res_big_clean %>%
+  group_by(revdrug) %>%
+  summarise(costmatch=costmatch[1])
+
+##########
+#Looking at the common words found in previous step have to do some cleanup to 
+#make things match better.  Sigh.
+
+cost[cost$generic %in% agrep("codeine",cost$generic, value=T),]
+agrep("codeine",cost$generic)
+paincost<-cost
+cod<-paincost[paincost$generic %in% agrep("codeine",paincost$generic, value=T),]
+paincost<-paincost[-agrep("codeine",paincost$generic),]
+cod$drug<-"codeine"
+cod$generic<-"codeine"
+cod1<-cod %>%
+  ungroup() %>%
+  group_by(drug, generic) %>%
+  summarise(supply=sum(supply), cost = sum(cost))
+cod1
+paincost<-rbind(paincost, cod1)
+rm(cod1, cod)
+
+cost[cost$generic %in% agrep("aspirin",cost$generic, value=T),]
+pain_rev[pain_rev$drug %in% agrep("aspirin",pain_rev$drug, value=T), c("drug")]
+
+
+#########
+#review res file and shrink
+res<-res[c(5,13, 17,19, 34, 35, 37, 43, 44, 49, 50, 54, 56:57, 
+           62:65, 67:70,74:75, 77, 79:81, 84:85, 87:89, 91:94,
+           96, 103, 105, 109:110, 112, 122, 129, 132:139,141:144,
+           149, 153, 155, 159, 166, 169, 171, 176)]
+
+###########
+#Left join res_big_clean and revcount
+
+reviewdata<-matchfile %>%
+  left_join(revcount, by =c("revdrug"="drug")) %>%
+  filter(condition %in% agrep("pain", condition, value=T)) %>%
+  group_by(revdrug,costmatch, condition) %>%
+  summarise(good=sum(s_love,s_wond,s_save,s_great,s_happy),
+            bad=sum(s_hate, s_angry, s_illegal, s_nightmare, s_burns, s_waste, s_irrit,
+                    s_ineff),
+            rate=mean(a_rating, na.rm=T)) %>%
+  arrange(desc(good)) 
+rev_and_cost<-reviewdata %>%
+  left_join(cost, by=c("costmatch" = "drug"))
+
+save(rev_and_cost, file="joined_review_and_cost_files.r")
