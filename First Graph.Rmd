@@ -2,60 +2,88 @@
 title: "First Graph"
 author: "Michael Turner"
 date: "2/2/2019"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
 ```
 
-## Top 125 Percribed Drugs
+## Top Percribed Drugs
 
-This graph shows the top 125 perscribed drugs based on Medicare Part D data released from
-Medicare for 2017. The other information is numerical drug reviews provided by users of Drugs.com and Druglib.com, which both allow people to provide Amazon style drug reviews on a ten point scale along with comments.
+This graph shows the 1,424 perscribed drugs based on Medicare Part D data released from
+Medicare for 2017. This information is combined with numerical drug reviews provided by users of Drugs.com and Druglib.com, which both allow people to provide Amazon style drug reviews on a ten point scale along with comments.
 
-The x-axis of this graph is the average rating for these drugs binned in buckets, while the y-axis shows the per-pill cost to Medicare.  All of these
-```{r cars, echo=false}
-load(file="joined_review_and_cost_files.r")
-randc<-rev_and_cost %>%
-  group_by(revdrug, condition, good, bad, rate) %>%
-  summarise(supply = sum(supply), cost=sum(cost)) %>%
-  mutate(norm_good=(good/supply)*10000, 
-         norm_bad=(bad/supply)*10000,
-         drug=revdrug) %>%
-  ungroup() %>%
-    select(drug, condition, good, bad, rate, supply, cost, norm_good, norm_bad)
+The x-axis of this graph is the average rating for these drugs binned in buckets, while the y-axis shows the per-pill cost to Medicare. 
 
+```{r full, echo=false}
 
-topsupply<-randc %>%
-  filter(supply >1000000) %>%
+#load(file="joined_review_and_cost_files.r")
+drugs<-randc %>%
+  #filter(supply >1000000) %>%
   group_by(drug) %>%
   summarise(good=sum(good),
             bad=sum(bad),
-            rate=mean(rate),
+            rate=mean(rating),
             supply=sum(supply),
             cost=sum(cost),
             percost=sum(cost)/sum(supply)) #%>%
- 
-topsupply %>%
-  filter(percost<150) %>%
+
+
+drugs %>%
+  #filter(percost<150) %>%
   ggplot( aes(rate, percost)) +
   geom_boxplot(aes(cut_width(rate, 1))) +
   theme_classic()+
-  scale_y_continuous(name="Per Pill Cost for Top 125 Prescribed Drugs\n (Cost<$100 excludes 3 drugs)",limits=c(0,100),
-                     breaks=c(0,25,50,75,100 ),
-                     labels=c("$0", "$25", "$50", "$75","$100"))+
-  scale_x_discrete(name="Average Drug Review Ratings", labels= c("<1.5",
+  scale_y_continuous(name="Per Pill Cost",
+                     breaks=c(0,5000,10000,15000,20000 ),
+                     labels=c("$0", "$5k", "$10k", "$15k","$20k"))+
+  scale_x_discrete(name="Average Drug Review Raings", labels= c("<1.5",
                                                                 "1.5-2.5", "2.5-3.5",
                                                                 "3.5-4.5", "4.5-5.5",
                                                                 "5.5-6.5", "6.5-7.5",
                                                                 "7.5-8.5", "8.5-9.5",
                                                                 ">9.5"))+
-  ggtitle("User Ratings of Top 125 Medicare Perscribed Drugs 2017")
+  ggtitle("Per Pill Cost of 1,424 Medicare Covered Drugs by User Ratings")
+```
+
+Obviously a few high cost outlier pills make this graph hard to read.  But there is some good news here for drug marketers, the highest cost drugs mostly have high ratings. The one exception is Firazyr which has an average rating of 6.25 and costs 13,166 a pill.  This drug, which is used to treat angiodema, is a major competitor to kalbitor (average rating of 10, cost 19,281/pill)
+
+```{r cars, echo=false}
+#load(file="joined_review_and_cost_files.r")
+
+
+library(tidyverse)
+drugs<-randc %>%
+  #filter(supply >1000000) %>%
+  group_by(drug) %>%
+  summarise(good=sum(good),
+            bad=sum(bad),
+            rate=mean(rating),
+            supply=sum(supply),
+            cost=sum(cost),
+            percost=sum(cost)/sum(supply)) #%>%
+
+ 
+drugs %>%
+  filter(percost<150) %>%
+  ggplot( aes(rate, percost)) +
+  geom_boxplot(aes(cut_width(rate, 1))) +
+  theme_classic()+
+  scale_y_continuous(name="Per Pill Cost (Drugs less than $150",
+                     breaks=c(0,25,50,75,100,125, 150 ),
+                      labels=c("$0", "$25", "$50", "$75","$100","$125" ,"$150"))+
+  scale_x_discrete(name="Average Drug Review Raings", labels= c("<1.5",
+                                                                "1.5-2.5", "2.5-3.5",
+                                                                "3.5-4.5", "4.5-5.5",
+                                                                "5.5-6.5", "6.5-7.5",
+                                                                "7.5-8.5", "8.5-9.5",
+                                                                ">9.5"))+
+  ggtitle("Per Pill Cost of 1,301 Medicare Covered Drugs by User Ratings")
   
 
 ```
 
-There is some interesting information in this graph.  For instance, the three highest ratings categories account for more of the high cost drugs.  Not show on this plot is that the top three highest cost drugs (Copaxone ($199/pill, rating of 9),Humira ($158/pill,rating of 7.8 ), and Revlimid ($420/pill, rating of 10)) all end up in these three upper categories.  This suggests that high cost drugs tend to have high ratings, a good thing for drug companies.
-
-But, it is also worth noting that more drugs in the $25 range end up with ratings between 1.5-2.5, which is bad since these are moderately costly drugs and probably tend to be profitable. 

@@ -117,6 +117,8 @@ revcount<-drev %>%
          ineffectivec=str_count( review, "ineffective"),
          happyc=str_count( review, "happy")) %>%
   group_by(drug, condition) %>%
+  add_tally() %>%
+  group_by(drug, condition, n)%>%
   summarise(s_love = sum(lovec),
             s_wond = sum(wonderfulc),
             s_save = sum(savec),
@@ -130,7 +132,7 @@ revcount<-drev %>%
             s_waste = sum(wastec),
             s_irrit = sum(irritablec),
             s_ineff = sum(ineffectivec),
-            a_rating = mean(rating)
+            s_rating = sum(rating)
             )
 
 
@@ -156,9 +158,6 @@ save(pain_rev, file="just_pain_reviews.r")
 
 ########
 #Drug Names
-nam<-read_tsv(file="drug_names.tsv")
-nam
-smalluse
 
 partd<-read_tsv(file="PartD_Prescriber_PUF_NPI_Drug_16.txt")
 cost<-partd %>%
@@ -181,16 +180,9 @@ cost<-cost %>%
 
 save(cost, file="partdcost.r")
 
-##########
-#
-agrep(pain_rev$drug[1],cost$generic, value=T)
-cost
-cost$drug[1]      
-cost$drug[2] 
-cost[cost$generic %in% agrep(pain_rev$drug[1],cost$generic, value=T),]
 
 ##########
-#Testing stack overflow answer to problem
+#Combining data sets using fuzzy logic (gonna drop a few obvi but better quick than perfect)
 library(stringdist)
 
 
@@ -221,50 +213,25 @@ matchfile<-res_big_clean %>%
   group_by(revdrug) %>%
   summarise(costmatch=costmatch[1])
 
-##########
-#Looking at the common words found in previous step have to do some cleanup to 
-#make things match better.  Sigh.
-
-cost[cost$generic %in% agrep("codeine",cost$generic, value=T),]
-agrep("codeine",cost$generic)
-paincost<-cost
-cod<-paincost[paincost$generic %in% agrep("codeine",paincost$generic, value=T),]
-paincost<-paincost[-agrep("codeine",paincost$generic),]
-cod$drug<-"codeine"
-cod$generic<-"codeine"
-cod1<-cod %>%
-  ungroup() %>%
-  group_by(drug, generic) %>%
-  summarise(supply=sum(supply), cost = sum(cost))
-cod1
-paincost<-rbind(paincost, cod1)
-rm(cod1, cod)
-
-cost[cost$generic %in% agrep("aspirin",cost$generic, value=T),]
-pain_rev[pain_rev$drug %in% agrep("aspirin",pain_rev$drug, value=T), c("drug")]
-
-
-#########
-#review res file and shrink
-res<-res[c(5,13, 17,19, 34, 35, 37, 43, 44, 49, 50, 54, 56:57, 
-           62:65, 67:70,74:75, 77, 79:81, 84:85, 87:89, 91:94,
-           96, 103, 105, 109:110, 112, 122, 129, 132:139,141:144,
-           149, 153, 155, 159, 166, 169, 171, 176)]
 
 ###########
 #Left join res_big_clean and revcount
 
 reviewdata<-matchfile %>%
   left_join(revcount, by =c("revdrug"="drug")) %>%
-  filter(condition %in% agrep("pain", condition, value=T)) %>%
+  #filter(condition %in% agrep("pain", condition, value=T)) %>%
   group_by(revdrug,costmatch, condition) %>%
   summarise(good=sum(s_love,s_wond,s_save,s_great,s_happy),
             bad=sum(s_hate, s_angry, s_illegal, s_nightmare, s_burns, s_waste, s_irrit,
                     s_ineff),
-            rate=mean(a_rating, na.rm=T)) %>%
-  arrange(desc(good)) 
+            count=sum(n),
+            s_rate=sum(s_rating)) 
+save(reviewdata, file="fully_joined_review_data.r")
 rev_and_cost<-reviewdata %>%
-  left_join(cost, by=c("costmatch" = "drug"))
+  left_join(cost, by=c("costmatch" = "drug")) %>%
+  ungroup() %>%
+  select(-costmatch, -generic)
+rev_and_cost<-rev_and_cost[is.na(rev_and_cost$condition)==F,]
 
 save(rev_and_cost, file="joined_review_and_cost_files.r")
 
@@ -273,53 +240,73 @@ save(rev_and_cost, file="joined_review_and_cost_files.r")
 #rm(smalluse,use, res_big, res_big_clean, res, pain_rev, paincost, nam, matchfile, drev, cost)
 ##########
 #Explore file
-table(rev_and_cost$condition)
-randc<-rev_and_cost %>%
-  group_by(revdrug, condition, good, bad, rate) %>%
-  summarise(supply = sum(supply), cost=sum(cost)) %>%
-  mutate(norm_good=(good/supply)*10000, 
-         norm_bad=(bad/supply)*10000,
-         drug=revdrug) %>%
+#table(rev_and_cost$condition)
+randc<-
+rev_and_cost %>%
+  group_by(revdrug, supply, cost) %>%
+  summarise(good=sum(good),
+         bad=sum(bad),
+         count=sum(count),
+         s_rate=sum(s_rate)) %>%
+        mutate( drug=revdrug) %>%
   ungroup() %>%
-    select(drug, condition, good, bad, rate, supply, cost, norm_good, norm_bad)
+    select(drug,  good, bad, count, s_rate, supply, cost) %>%
+  mutate(rating=s_rate/count)
+randc %>% count(drug) %>% filter(n>1)
+randc %>% filter(drug=="avonex") #It appears some drugs created two lines and need to be combine
+
+randc<-randc %>% group_by(drug, good, bad, rating, count) %>%
+  summarise(supply=sum(supply), cost=sum(cost)) %>%
+  ungroup()
 
 
-
-randc %>%
-  filter(condition %in% agrep("pain", condition, ignore.case = T, value = T),
-                              good>0) %>%
-  ggplot(aes(cost, norm_good))+
-  geom_point()
-
-reg<-lm(cost ~ good+bad+rate, data=rev_and_cost[rev_and_cost$good>0,])
-
+reg<-lm(cost ~ good+bad+rating+good*rating, data=randc[randc$good>0,])
+summary(reg)
 ##########
 #
 library(ggplot)
-topsupply<-randc %>%
-  filter(supply >1000000) %>%
+drugs<-randc %>%
+  #filter(supply >1000000) %>%
   group_by(drug) %>%
   summarise(good=sum(good),
             bad=sum(bad),
-            rate=mean(rate),
+            rate=mean(rating),
             supply=sum(supply),
             cost=sum(cost),
             percost=sum(cost)/sum(supply)) #%>%
+
+drugs %>%filter(percost>200) %>% arrange(desc(percost))
  
-topsupply %>%
-  filter(percost<150) %>%
+drugs %>%
+  #filter(percost<150) %>%
   ggplot( aes(rate, percost)) +
   geom_boxplot(aes(cut_width(rate, 1))) +
   theme_classic()+
-  scale_y_continuous(name="Per Pill Cost for Top 125 Prescribed Drugs\n (Cost<$100 excludes 3 drugs)",limits=c(0,100),
-                     breaks=c(0,25,50,75,100 ),
-                     labels=c("$0", "$25", "$50", "$75","$100"))+
+  scale_y_continuous(name="Per Pill Cost for Top 125 Prescribed Drugs\n (Cost<$100 excludes 3 drugs)",#limits=c(0,100),
+                      breaks=c(0,25,50,75,100 ),
+                      labels=c("$0", "$25", "$50", "$75","$100"))+
   scale_x_discrete(name="Average Drug Review Raings", labels= c("<1.5",
                                                                 "1.5-2.5", "2.5-3.5",
                                                                 "3.5-4.5", "4.5-5.5",
                                                                 "5.5-6.5", "6.5-7.5",
                                                                 "7.5-8.5", "8.5-9.5",
                                                                 ">9.5"))
+
+drugs %>%
+  #filter(percost<150) %>%
+  ggplot( aes(rate, percost)) +
+  geom_boxplot(aes(cut_width(rate, 1))) +
+  theme_classic()+
+  scale_y_continuous(name="Per Pill Cost for Top 125 Prescribed Drugs\n (Cost<$100 excludes 3 drugs)",#limits=c(0,100),
+                     breaks=c(0,5000,10000,15000,20000 ),
+                     labels=c("$0", "$5k", "$10k", "$15k","$20k"))+
+  scale_x_discrete(name="Average Drug Review Raings", labels= c("<1.5",
+                                                                "1.5-2.5", "2.5-3.5",
+                                                                "3.5-4.5", "4.5-5.5",
+                                                                "5.5-6.5", "6.5-7.5",
+                                                                "7.5-8.5", "8.5-9.5",
+                                                                ">9.5"))+
+  ggtitle("Per Pill Cost of 1,424 Medicare Covered Drugs by User Ratings")
   
-topsupply %>%
-  filter(rate>1 & rate <3)
+drugs %>%
+  filter(percost>1000)
