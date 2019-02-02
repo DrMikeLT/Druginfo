@@ -321,3 +321,5 @@ topsupply %>%
                                                                 "7.5-8.5", "8.5-9.5",
                                                                 ">9.5"))
   
+topsupply %>%
+  filter(rate>1 & rate <3)

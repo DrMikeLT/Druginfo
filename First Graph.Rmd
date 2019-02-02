@@ -56,12 +56,6 @@ topsupply %>%
 
 ```
 
-## Including Plots
+There is some interesting information in this graph.  For instance, the three highest ratings categories account for more of the high cost drugs.  Not show on this plot is that the top three highest cost drugs (Copaxone ($199/pill, rating of 9),Humira ($158/pill,rating of 7.8 ), and Revlimid ($420/pill, rating of 10)) all end up in these three upper categories.  This suggests that high cost drugs tend to have high ratings, a good thing for drug companies.
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+But, it is also worth noting that more drugs in the $25 range end up with ratings between 1.5-2.5, which is bad since these are moderately costly drugs and probably tend to be profitable. 
