@@ -3,8 +3,8 @@ title: "First Graph"
 author: "Michael Turner"
 date: "2/2/2019"
 output:
-  word_document: default
   html_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -19,9 +19,20 @@ Medicare for 2017. This information is combined with numerical drug reviews prov
 
 The x-axis of this graph is the average rating for these drugs binned in buckets, while the y-axis shows the per-pill cost to Medicare. 
 
-```{r full, echo=false}
+```{r full, echo=FALSE}
 
-#load(file="joined_review_and_cost_files.r")
+load(file="joined_review_and_cost_files.r")
+randc<-
+rev_and_cost %>%
+  group_by(revdrug, supply, cost) %>%
+  summarise(good=sum(good),
+         bad=sum(bad),
+         count=sum(count),
+         s_rate=sum(s_rate)) %>%
+        mutate( drug=revdrug) %>%
+  ungroup() %>%
+    select(drug,  good, bad, count, s_rate, supply, cost) %>%
+  mutate(rating=s_rate/count)
 drugs<-randc %>%
   #filter(supply >1000000) %>%
   group_by(drug) %>%
@@ -50,13 +61,26 @@ drugs %>%
   ggtitle("Per Pill Cost of 1,424 Medicare Covered Drugs by User Ratings")
 ```
 
-Obviously a few high cost outlier pills make this graph hard to read.  But there is some good news here for drug marketers, the highest cost drugs mostly have high ratings. The one exception is Firazyr which has an average rating of 6.25 and costs 13,166 a pill.  This drug, which is used to treat angiodema, is a major competitor to kalbitor (average rating of 10, cost 19,281/pill)
+Obviously a few high cost outlier pills make this graph hard to read.  But there is some good news here for drug marketers, the highest cost drugs mostly have high ratings. The one exception is Firazyr which has an average rating of 6.25 and costs 13,166 a pill.  This drug, which is used to treat angiodema, is a major competitor to kalbitor (average rating of 10, cost 19,281/pill).  But there is only one review for Kalbitor, which makes the comparison somewhat unfair.
 
-```{r cars, echo=false}
-#load(file="joined_review_and_cost_files.r")
+For a second graph, I remove all drugs costing more than $150 a pill to gain a better sense of the distribution of ratings to pill cost.
+
+```{r cars, echo=FALSE}
+load(file="joined_review_and_cost_files.r")
 
 
 library(tidyverse)
+randc<-
+rev_and_cost %>%
+  group_by(revdrug, supply, cost) %>%
+  summarise(good=sum(good),
+         bad=sum(bad),
+         count=sum(count),
+         s_rate=sum(s_rate)) %>%
+        mutate( drug=revdrug) %>%
+  ungroup() %>%
+    select(drug,  good, bad, count, s_rate, supply, cost) %>%
+  mutate(rating=s_rate/count)
 drugs<-randc %>%
   #filter(supply >1000000) %>%
   group_by(drug) %>%
@@ -86,4 +110,10 @@ drugs %>%
   
 
 ```
+
+Here we see that the more expensive pills tend to have ratings of at least 5 or higher.  But here are some exception to this rule that are clearly very negatively rated.  These are opportunities for marketers to consider.
+
+The two outlier pils in the bottom rating category are Interferon and Mepron.  Mepron only has one rating but it is quite poor.  Interferon, on the other hand, has two ratings and both are as low as possible. One even states that it was the "worst experience of my life."
+
+
 
