@@ -103,7 +103,10 @@ drev %>%
   mutate(lovec=str_count( review, "love"),
          hate=str_count( review, "hate"),
          wonderfulc = str_count( review, "wonderful"),
-         savec=str_count( review, "sav"),) 
+         savec=str_count( review, "saved my life")) %>%
+  group_by(drug) %>%
+  summarise(lifesum=sum(savec)) %>%
+  arrange(desc(lifesum))
   
 
 
