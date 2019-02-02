@@ -116,7 +116,7 @@ revcount<-drev %>%
          irritablec=str_count( review, "irritable"),
          ineffectivec=str_count( review, "ineffective"),
          happyc=str_count( review, "happy")) %>%
-  group_by(drug) %>%
+  group_by(drug, condition) %>%
   summarise(s_love = sum(lovec),
             s_wond = sum(wonderfulc),
             s_save = sum(savec),
@@ -129,7 +129,8 @@ revcount<-drev %>%
             s_burns = sum(burnsc),
             s_waste = sum(wastec),
             s_irrit = sum(irritablec),
-            s_ineff = sum(ineffectivec)
+            s_ineff = sum(ineffectivec),
+            a_rating = mean(rating)
             )
 
 
@@ -137,6 +138,19 @@ revcount<-drev %>%
 
 save(revcount,file="review_word_count.r")
 
+revcount %>%
+  arrange(desc(s_love)) %>%
+  select (drug, condition, a_rating, s_love, s_happy)
+
+revcount %>%
+  select(condition) %>%
+  group_by(condition) %>%
+  count(condition) %>%
+  arrange(desc(n))
+
+pain_rev<- revcount %>%
+  filter(condition =="Pain")
+save(pain_rev, file="just_pain_reviews.r")
 
 ########
 #Drug Names
@@ -155,10 +169,43 @@ cost<-cost %>%
   mutate(drug = str_to_lower(drug_name),
          generic = str_to_lower(generic_name)) %>%
   select(drug, generic, supply, cost)
-cost %>%
-  group_by(drug) %>%
-  select(-drug_name)
+cost<-cost %>%
+  ungroup() %>%
+  group_by(drug, generic) %>%
+  select(-drug_name) 
+  
+
+
+
 save(cost, file="partdcost.r")
 
 ##########
 #
+agrep(pain_rev$drug[1],cost$generic, value=T)
+cost
+cost$drug[1]      
+cost$drug[2] 
+cost[cost$generic %in% agrep(pain_rev$drug[1],cost$generic, value=T),]
+
+##########
+#Testing stack overflow answer to problem
+library(stringdist)
+
+
+match<-character()
+threshold<-14 # max 14 characters of divergence
+mindist<-integer()
+sortedmatches<-character()
+
+for (i in 1:length(pain_rev$drug) ) {
+  matchdist<-adist(pain_rev$drug[i],cost$drug)[1,]
+  # matchdist<-stringdist(revcount$drug[i],cost$drug) # several methods available
+  
+  matchdist<-ifelse(matchdist>threshold,NA,matchdist)
+  sortedmatches[i]<-paste(cost$drug[order(matchdist, na.last=NA)], collapse = ", ")
+  mindist[i]<- tryCatch(ifelse(is.integer(which.min(matchdist)),matchdist[which.min(matchdist)],NA), error = function(e){NA})
+  match[i]<-ifelse(length(cost$drug[which.min(matchdist)])==0,NA,
+                   cost$drug[which.min(matchdist)] )
+}
+res<-data.frame(pain_rev$drug=pain_rev$drug,match=match,divergence=mindist, sortedmatches=sortedmatches, stringsAsFactors = F)
+res
