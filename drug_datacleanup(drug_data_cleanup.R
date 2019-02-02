@@ -93,20 +93,72 @@ smalluse<-use %>%
   group_by(drug)%>%
   summarise(cost=sum(`Total Amount Reimbursed`), numscrip=sum(`Number of Prescriptions`))
 
+smalluse
+save(smalluse, file="spending_and_perscribed.r")
+
 use
 
 ######
 #Looking at comments
 library(stringr)
 library(tidyverse)
-drev %>%
+revcount<-drev %>%
   mutate(lovec=str_count( review, "love"),
-         hate=str_count( review, "hate"),
+         hatec=str_count( review, "hate"),
+         angryc=str_count( review, "angry"),
+         illegalc=str_count( review, "illegal"),
+         nightmarec=str_count( review, "nightmare"),
+         burnsc=str_count( review, "burns"),
+         wastec =str_count( review, "waste of money"),
          wonderfulc = str_count( review, "wonderful"),
-         savec=str_count( review, "saved my life")) %>%
+         savec=str_count( review, "saved my life"),
+         greatc=str_count( review, "great"),
+         irritablec=str_count( review, "irritable"),
+         ineffectivec=str_count( review, "ineffective"),
+         happyc=str_count( review, "happy")) %>%
   group_by(drug) %>%
-  summarise(lifesum=sum(savec)) %>%
-  arrange(desc(lifesum))
-  
+  summarise(s_love = sum(lovec),
+            s_wond = sum(wonderfulc),
+            s_save = sum(savec),
+            s_great = sum(greatc),
+            s_happy = sum(happyc),
+            s_hate = sum(hatec),
+            s_angry = sum(angryc),
+            s_illegal = sum(illegalc),
+            s_nightmare = sum(nightmarec),
+            s_burns = sum(burnsc),
+            s_waste = sum(wastec),
+            s_irrit = sum(irritablec),
+            s_ineff = sum(ineffectivec)
+            )
 
 
+
+
+save(revcount,file="review_word_count.r")
+
+
+########
+#Drug Names
+nam<-read_tsv(file="drug_names.tsv")
+nam
+smalluse
+
+partd<-read_tsv(file="PartD_Prescriber_PUF_NPI_Drug_16.txt")
+cost<-partd %>%
+  select(drug_name, generic_name, total_day_supply, total_drug_cost) %>%
+  group_by(drug_name, generic_name) %>%
+  summarise (supply=sum(total_day_supply),
+             cost=sum(total_drug_cost))
+rm(partd)
+cost<-cost %>%
+  mutate(drug = str_to_lower(drug_name),
+         generic = str_to_lower(generic_name)) %>%
+  select(drug, generic, supply, cost)
+cost %>%
+  group_by(drug) %>%
+  select(-drug_name)
+save(cost, file="partdcost.r")
+
+##########
+#
