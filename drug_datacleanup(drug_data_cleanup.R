@@ -267,3 +267,57 @@ rev_and_cost<-reviewdata %>%
   left_join(cost, by=c("costmatch" = "drug"))
 
 save(rev_and_cost, file="joined_review_and_cost_files.r")
+
+#rm(revcount)
+#rm(reviewdata)
+#rm(smalluse,use, res_big, res_big_clean, res, pain_rev, paincost, nam, matchfile, drev, cost)
+##########
+#Explore file
+table(rev_and_cost$condition)
+randc<-rev_and_cost %>%
+  group_by(revdrug, condition, good, bad, rate) %>%
+  summarise(supply = sum(supply), cost=sum(cost)) %>%
+  mutate(norm_good=(good/supply)*10000, 
+         norm_bad=(bad/supply)*10000,
+         drug=revdrug) %>%
+  ungroup() %>%
+    select(drug, condition, good, bad, rate, supply, cost, norm_good, norm_bad)
+
+
+
+randc %>%
+  filter(condition %in% agrep("pain", condition, ignore.case = T, value = T),
+                              good>0) %>%
+  ggplot(aes(cost, norm_good))+
+  geom_point()
+
+reg<-lm(cost ~ good+bad+rate, data=rev_and_cost[rev_and_cost$good>0,])
+
+##########
+#
+library(ggplot)
+topsupply<-randc %>%
+  filter(supply >1000000) %>%
+  group_by(drug) %>%
+  summarise(good=sum(good),
+            bad=sum(bad),
+            rate=mean(rate),
+            supply=sum(supply),
+            cost=sum(cost),
+            percost=sum(cost)/sum(supply)) #%>%
+ 
+topsupply %>%
+  filter(percost<150) %>%
+  ggplot( aes(rate, percost)) +
+  geom_boxplot(aes(cut_width(rate, 1))) +
+  theme_classic()+
+  scale_y_continuous(name="Per Pill Cost for Top 125 Prescribed Drugs\n (Cost<$100 excludes 3 drugs)",limits=c(0,100),
+                     breaks=c(0,25,50,75,100 ),
+                     labels=c("$0", "$25", "$50", "$75","$100"))+
+  scale_x_discrete(name="Average Drug Review Raings", labels= c("<1.5",
+                                                                "1.5-2.5", "2.5-3.5",
+                                                                "3.5-4.5", "4.5-5.5",
+                                                                "5.5-6.5", "6.5-7.5",
+                                                                "7.5-8.5", "8.5-9.5",
+                                                                ">9.5"))
+  

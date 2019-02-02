@@ -1,0 +1,67 @@
+---
+title: "First Graph"
+author: "Michael Turner"
+date: "2/2/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Top 125 Percribed Drugs
+
+This graph shows the top 125 perscribed drugs based on Medicare Part D data released from
+Medicare for 2017. The other information is numerical drug reviews provided by users of Drugs.com and Druglib.com, which both allow people to provide Amazon style drug reviews on a ten point scale along with comments.
+
+The x-axis of this graph is the average rating for these drugs binned in buckets, while the y-axis shows the per-pill cost to Medicare.  All of these
+```{r cars, echo=false}
+load(file="joined_review_and_cost_files.r")
+randc<-rev_and_cost %>%
+  group_by(revdrug, condition, good, bad, rate) %>%
+  summarise(supply = sum(supply), cost=sum(cost)) %>%
+  mutate(norm_good=(good/supply)*10000, 
+         norm_bad=(bad/supply)*10000,
+         drug=revdrug) %>%
+  ungroup() %>%
+    select(drug, condition, good, bad, rate, supply, cost, norm_good, norm_bad)
+
+
+topsupply<-randc %>%
+  filter(supply >1000000) %>%
+  group_by(drug) %>%
+  summarise(good=sum(good),
+            bad=sum(bad),
+            rate=mean(rate),
+            supply=sum(supply),
+            cost=sum(cost),
+            percost=sum(cost)/sum(supply)) #%>%
+ 
+topsupply %>%
+  filter(percost<150) %>%
+  ggplot( aes(rate, percost)) +
+  geom_boxplot(aes(cut_width(rate, 1))) +
+  theme_classic()+
+  scale_y_continuous(name="Per Pill Cost for Top 125 Prescribed Drugs\n (Cost<$100 excludes 3 drugs)",limits=c(0,100),
+                     breaks=c(0,25,50,75,100 ),
+                     labels=c("$0", "$25", "$50", "$75","$100"))+
+  scale_x_discrete(name="Average Drug Review Ratings", labels= c("<1.5",
+                                                                "1.5-2.5", "2.5-3.5",
+                                                                "3.5-4.5", "4.5-5.5",
+                                                                "5.5-6.5", "6.5-7.5",
+                                                                "7.5-8.5", "8.5-9.5",
+                                                                ">9.5"))+
+  ggtitle("User Ratings of Top 125 Medicare Perscribed Drugs 2017")
+  
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
