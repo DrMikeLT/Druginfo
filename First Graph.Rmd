@@ -15,7 +15,7 @@ library(tidyverse)
 ## Top Percribed Drugs
 
 This graph shows the 1,424 perscribed drugs based on Medicare Part D data released from
-Medicare for 2017. This information is combined with numerical drug reviews provided by users of Drugs.com and Druglib.com, which both allow people to provide Amazon style drug reviews on a ten point scale along with comments.
+Medicare for 2016. This information is combined with numerical drug reviews provided by users of Drugs.com and Druglib.com, which both allow people to provide Amazon style drug reviews on a ten point scale along with comments.
 
 The x-axis of this graph is the average rating for these drugs binned in buckets, while the y-axis shows the per-pill cost to Medicare. 
 
@@ -124,7 +124,7 @@ drugs %>%
 
 Here we see that the more expensive pills tend to have ratings of at least 5 or higher.  But here are some exception to this rule that are clearly very negatively rated.  These are opportunities for marketers to consider.
 
-The two outlier pils in the bottom rating category are Interferon and Mepron.  Mepron only has one rating but it is quite poor.  Interferon, on the other hand, has two ratings and both are as low as possible. One even states that it was the "worst experience of my life."
+The two outlier pills in the bottom rating category are Interferon and Mepron.  Mepron only has one rating but it is quite poor.  Interferon, on the other hand, has two ratings and both are as low as possible. One even states that it was the "worst experience of my life."  These drugs present a chance for companies to address negative press for high dollar values pills. 
 
 
 
