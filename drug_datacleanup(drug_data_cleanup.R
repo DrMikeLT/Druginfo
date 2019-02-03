@@ -252,8 +252,7 @@ rev_and_cost %>%
   ungroup() %>%
     select(drug,  good, bad, count, s_rate, supply, cost) %>%
   mutate(rating=s_rate/count)
-randc %>% count(drug) %>% filter(n>1)
-randc %>% filter(drug=="avonex") #It appears some drugs created two lines and need to be combine
+#It appears some drugs created two lines and need to be combine
 
 randc<-randc %>% group_by(drug, good, bad, rating, count) %>%
   summarise(supply=sum(supply), cost=sum(cost)) %>%
@@ -310,3 +309,62 @@ drugs %>%
   
 drugs %>%
   filter(percost>1000)
+
+###########
+#Looking at words
+wordrate<-randc %>%
+  group_by(drug) %>%
+  summarise(good=sum(good),
+            bad=sum(bad),
+            rate=mean(rating),
+            supply=sum(supply),
+            cost=sum(cost),
+            percost=sum(cost)/sum(supply),
+            count=sum(count),
+            goodrate=good/count,
+            badrate = bad/count) 
+
+goodd<- wordrate%>%
+  arrange(desc(goodrate)) %>%
+  filter(count>2) %>%
+  slice(1:10) %>%
+  mutate(scaledmoney=cost/sum(cost))
+save(goodd, file="Good Comments.r")
+
+badd<- wordrate%>%
+  arrange(desc(badrate)) %>%
+  filter(count>2) %>%
+  slice(1:10)%>%
+  mutate(scaledmoney=cost/sum(cost))
+save(badd, file="Bad Comments.r")
+
+ggplot(data=goodd, aes(x=factor(drug, levels=goodd$drug), y=goodrate))+
+  geom_bar(stat="identity", fill= "darkgreen") +
+  geom_line(data=goodd, aes(x=factor(drug, levels=drug), 
+                           y=scaledmoney, group=1), stat="identity")+
+  coord_flip() +
+  theme_classic() +
+  scale_x_discrete(name = "Drugs with Positive Comments")+
+  scale_y_continuous(name="Percent of Comments with Postive Phrases", limits=c(0,1),
+                     breaks=seq(0,1,0.2),
+                     labels=c("0%", "20%", "40%", "60%", "80%", "100%")) +
+  annotate("text", x=9.75, y=0.9, label="$337MM")+
+  ggtitle("Percent of Positive Phrases for Drugs with More Than 2 Reviews")
+
+ggplot(data=badd, aes(x=factor(drug, levels=badd$drug), y=badrate))+
+  geom_bar(stat="identity", fill= "darkred")  +
+  geom_line(data=badd, aes(x=factor(drug, levels=badd$drug), 
+                           y=badd$scaledmoney, group=1), stat="identity")+
+  coord_flip() +
+  theme_classic() +
+  scale_x_discrete(name = "Drugs with Positive Comments")+
+  scale_y_continuous(name="Percent of Comments with Negative Phrases", limits=c(0,1),
+                     breaks=seq(0,1,0.2),
+                     labels=c("0%", "20%", "40%", "60%", "80%", "100%"))+
+    annotate("text", x=7, y=0.5, label="$244MM")+
+  annotate("text", x=6, y=0.5, label="$159MM")+
+  annotate("text", x=8, y=0.5, label="$163MM")+
+  ggtitle("Percent of Negative Phrases for Drugs with More Than 2 Reviews")
+
+
+
